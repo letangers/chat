@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <cstdlib>
 using namespace std;
 
 int main(void){
@@ -29,21 +30,36 @@ int main(void){
 	struct sockaddr_in peeraddr;
 	socklen_t peerlen=sizeof(peeraddr);
 	int conn;
-	if((conn=accept(listenfd,(struct sockaddr*)&peeraddr,&peerlen))<0)
+
+	pid_t pid;
+	while(true){
+ 	if((conn=accept(listenfd,(struct sockaddr*)&peeraddr,&peerlen))<0)
 		cerr<<"something wrong when accept"<<endl;
 	cout<<"ip:"<<inet_ntoa(peeraddr.sin_addr)<<"  port:"<<ntohs(peeraddr.sin_port)<<endl;
-        char recvbuf[1024];
-	while (true){
-		memset(recvbuf,0,sizeof(recvbuf));
-		int ret=read(conn,recvbuf,sizeof(recvbuf));
-		if(ret==0){
-			cout<<"connection break"<<endl;
-			break;
+        
+	pid=fork();
+	if(pid==-1)
+		cerr<<"fork is wrong"<<endl;
+	if(pid==0)
+	{
+		close(listenfd);	
+
+		char recvbuf[1024];
+		while (true){
+			memset(recvbuf,0,sizeof(recvbuf));
+			int ret=read(conn,recvbuf,sizeof(recvbuf));
+			if(ret==0){
+				cout<<"connection break"<<endl;
+				close(conn);
+				exit(EXIT_SUCCESS);
+			}
+			cout<<recvbuf<<endl;
+			write(conn,recvbuf,ret);
 		}
-		cout<<recvbuf<<endl;
-		write(conn,recvbuf,ret);
 	}
-	close(conn);
+	else
+		close(conn);
+	}
 	close(listenfd);
 	return 0;
 }
