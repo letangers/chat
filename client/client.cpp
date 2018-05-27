@@ -37,7 +37,12 @@ int main(void){
 			break;
 		}
 		write(sock,sendbuf,strlen(sendbuf));
-		read(sock,recvbuf,sizeof(recvbuf));
+		int ret=read(sock,recvbuf,sizeof(recvbuf));
+		if(ret==0)
+		{
+			cout<<"服务端断开了连接"<<endl;
+			break;
+		}
 		cout<<"[receive from server]"<<recvbuf<<endl;
 		memset(sendbuf,0,sizeof(sendbuf));
 		memset(recvbuf,0,sizeof(recvbuf));
