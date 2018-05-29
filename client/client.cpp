@@ -4,7 +4,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-
+#include <cstdlib>
 #include <csignal>
 using namespace std;
 
@@ -31,13 +31,23 @@ int main(void){
 		cout<<"something wrong when connect"<<endl;
 	char sendbuf[1024]={0};
 	char recvbuf[1024]={0};
-	while(cin.getline(sendbuf,1024)){
+	char tempbuf[1023]={0};
+	char temp;
+	while(true){
+		cout<<"in the loop";
+		temp=cin.get();
+		if(temp=='\n')
+			continue;
+		cin.getline(tempbuf,1023);
+		sendbuf[0]=temp;
+		sendbuf[1]='\0';
+		strcat(sendbuf,tempbuf);
 		if(strcmp(sendbuf,"exit")==0){
 			cout<<"exit"<<endl;
 			break;
 		}
-		write(sock,sendbuf,strlen(sendbuf));
-		int ret=read(sock,recvbuf,sizeof(recvbuf));
+		send(sock,sendbuf,strlen(sendbuf),0);
+		int ret=recv(sock,recvbuf,sizeof(recvbuf),0);
 		if(ret==0)
 		{
 			cout<<"服务端断开了连接"<<endl;
@@ -46,7 +56,7 @@ int main(void){
 		cout<<"[receive from server]"<<recvbuf<<endl;
 		memset(sendbuf,0,sizeof(sendbuf));
 		memset(recvbuf,0,sizeof(recvbuf));
-		cin.clear();
+		cout<<"the end of one loop"<<endl;
 	}
 	close(sock);
 	return 0;
