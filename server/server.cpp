@@ -53,6 +53,10 @@ int main(void){
 				close(conn);
 				exit(EXIT_SUCCESS);
 			}
+			else if (ret==-1)
+				cerr<<"recv buf failed"<<endl;
+			     else 
+				cout<<"everything is ok"<<endl;
 			cout<<recvbuf<<endl;
 			write(conn,recvbuf,ret);
 		}
