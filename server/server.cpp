@@ -60,6 +60,7 @@ int main(void){
 			cout<<recvbuf<<endl;
 			write(conn,recvbuf,ret);
 		}
+		exit(EXIT_SUCCESS);
 	}
 	else
 		close(conn);
