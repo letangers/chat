@@ -1,36 +1,14 @@
+#include "recv_and_send.h"
+#include <string>
 #include <iostream>
 #include <string.h>
-#include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <cstdlib>
-
+#include <unistd.h>
 #include <pthread.h>
 using namespace std;
-
-
-void * send_and_recv(void * arg){
-	char recvbuf[1024];
-	while (true){
-		memset(recvbuf,0,sizeof(recvbuf));
-		int ret=read(*((int *)arg),recvbuf,sizeof(recvbuf));
-		if(ret==0){
-			cout<<"connection break  "<<*((int *)arg)<<endl;
-			break;
-		}
-		else if (ret==-1){
-			cerr<<"recv buf failed  "<<*((int *)arg)<<endl;
-			break;
-		}
-		     else 
-			cout<<"everything is ok  "<<*((int *)arg)<<endl;
-		cout<<recvbuf<<endl;
-		write(*((int *)arg),recvbuf,ret);
-	}
-	close(*((int *)arg));
-	return (void*)0;
-}
 
 
 int main(void){
@@ -61,7 +39,6 @@ int main(void){
  	if((*conn=accept(listenfd,(struct sockaddr*)&peeraddr,&peerlen))<0)
 		cerr<<"something wrong when accept"<<endl;
 	cout<<"ip:"<<inet_ntoa(peeraddr.sin_addr)<<"  port:"<<ntohs(peeraddr.sin_port)<<endl;
-        
 	pthread_t tid;
 	if(pthread_create(&tid,NULL,send_and_recv,conn)<0)
 		cerr<<"create thread failed"<<endl;
