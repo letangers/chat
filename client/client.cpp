@@ -1,5 +1,4 @@
 #include "init.cpp"
-
 #include <iostream>
 #include <cstring>
 #include <sys/socket.h>
@@ -9,11 +8,11 @@
 #include <cstdlib>
 #include <csignal>
 
+#include <pthread.h>
 using namespace std;
 
-pid_t pid;
 
-void send_to_service(){
+void *send_to_service(void *arg){
 	if(signal(SIGINT,handle)<0)
 		cerr<<"something wrong when installing sub signal"<<endl;
 	if(signal(SIGUSR1,endprocess)<0)
@@ -22,14 +21,14 @@ void send_to_service(){
 	while(cin.getline(sendbuf,1024)){
 		if(strcmp(sendbuf,"exit")==0){
 			cout<<"exit"<<endl;
-			kill(getppid(),SIGUSR1);
 			break;
 		}
 		send(sock,sendbuf,strlen(sendbuf),0);
 		memset(sendbuf,0,sizeof(sendbuf));
 	}
-	kill(getppid(),SIGUSR1);
 	close(sock);
+	exit(EXIT_SUCCESS);
+	return (void *)0;
 }
 void recv_from_service(){
 	if(signal(SIGINT,handle)<0)
@@ -42,7 +41,6 @@ void recv_from_service(){
 		if(ret==0)
 		{
 			cout<<"服务端断开了连接"<<endl;
-			kill(pid,SIGUSR1);
 			break;
 		}
 		cout<<"[receive from server] "<<recvbuf<<endl;
@@ -62,18 +60,11 @@ int main(void){
 	cliaddr.sin_addr.s_addr=inet_addr("123.207.139.132");
 	if(connect(sock,(struct sockaddr*)&cliaddr,sizeof(cliaddr))<0)
 		cout<<"something wrong when connect"<<endl;
+
+	pthread_t tid;
+	if(pthread_create(&tid,NULL,send_to_service,NULL)<0)
+		cerr<<"create thread failed"<<endl;
 	
-	pid=fork();
-	if (pid==-1){
-		cout<<"create sub process faile"<<endl;
-		exit(EXIT_SUCCESS);
-	}
-	
-	if(pid==0){
-		send_to_service();
-	}
-	else{
-		recv_from_service();
-	}
+	recv_from_service();
 	return 0;
 }
