@@ -10,6 +10,17 @@
 #include <unistd.h>
 using namespace std;
 
+string parse(char *recvbuf){
+	string temp;
+	unsigned int i;
+	for (i=0;i<strlen(recvbuf);i++){
+		if(recvbuf[i]==' ')
+			break;
+		temp+=recvbuf[i];
+	}
+	return temp;
+}
+
 void * send_and_recv(void * arg){
 	int sock=*((int *)arg);
 	char recvbuf[1024]={0};
@@ -43,13 +54,9 @@ void * send_and_recv(void * arg){
 		}
 		     else 
 			cout<<"everything is ok  "<<*((int *)arg)<<endl;
+		string temp=parse(recvbuf);
 		cout<<recvbuf<<endl;
-		if(recvbuf[0]=='1'){
-			send(online_user_table["1"],recvbuf,ret,0);
-		}
-		if(recvbuf[0]=='2'){
-			send(online_user_table["2"],recvbuf,ret,0);
-		}
+		send(online_user_table[temp],recvbuf,ret,0);
 	}
 	close(sock);
 	return (void*)0;
