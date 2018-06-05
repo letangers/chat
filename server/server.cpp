@@ -33,7 +33,13 @@ int main(void){
 	
 	struct sockaddr_in peeraddr;
 	socklen_t peerlen=sizeof(peeraddr);
-
+/*
+	pthread_key_create(&username,NULL);
+	pthread_key_create(&cmd,NULL);
+	pthread_key_create(&args,NULL);
+	pthread_key_create(&data,NULL);
+	pthread_key_create(&iter,NULL);
+	*/
 	while(true){
 	int *conn=new int;
  	if((*conn=accept(listenfd,(struct sockaddr*)&peeraddr,&peerlen))<0)
@@ -43,6 +49,13 @@ int main(void){
 	if(pthread_create(&tid,NULL,send_and_recv,conn)<0)
 		cerr<<"create thread failed"<<endl;
 	}
+	/*
+	pthread_key_delete(username);
+	pthread_key_delete(cmd);
+	pthread_key_delete(args);
+	pthread_key_delete(data);
+	pthread_key_dalete(iter);
+	*/
 	close(listenfd);
 	return 0;
 }
