@@ -43,8 +43,10 @@ void * send_and_recv(void * arg){
 
 	do
 	{
-		
+		*data="请输入用户名";
+		send(sock,data->c_str(),data->length(),0);
 		ret=recv(sock,recvbuf,sizeof(recvbuf),0);
+		cout<<"用户输入用户名>>>"<<recvbuf<<endl;
 		if(ret==0){
 			cout<<"connection break when recv the username "<<sock<<endl;
 			close(sock);
@@ -74,22 +76,33 @@ void * send_and_recv(void * arg){
 		     else 
 			cout<<"everything is ok  "<<*((int *)arg)<<endl;
 		parse_command(recvbuf,cmd,args,data);
+		cout<<"收到的命令是"<<*cmd<<endl;
+		cout<<"参数为"<<*args<<endl;
+		cout<<"数据为"<<*data<<endl;
 		if(*cmd=="showonline"){
 			for(*iter=online_user_table.begin();*iter!=online_user_table.end();(*iter)++)
 				*data+=(*iter)->first;
 			*args=*username;
+			*data="online "+*data;
 		}
 		if(*cmd=="sendto"){
 			if(*args=="all"){
 				for(*iter=online_user_table.begin();*iter!=online_user_table.end();(*iter)++)
+				{
+					*data=*username+" "+*data;
 					send((*iter)->second,data->c_str(),data->length(),0);
+				}
 				continue;
 			}
 			else if(online_user_table.count(*args)==0){
 				*data="用户不存在";
 				*args=*username;
 			}
+			else{
+				*data=*username+" "+*data;	
+			}
 		}
+		cout<<"发出的数据是"<<*data<<endl;
 		cout<<recvbuf<<endl;
 		send(online_user_table[*args],data->c_str(),data->length(),0);
 	}
