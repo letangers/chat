@@ -1,26 +1,30 @@
 #ifndef _PARSE_H_
 #define _PAESE_H_
 #include <string>
+#include <cstring>
 using namespace std;
 
 #define MAXARG 10
 
 
-int parse_command(const string *recvline,string *cmd,string *arg){
+int parse_command(char *recvline,string *cmd,string *arg,string * data){
 	int type=0;
 	*cmd="";
 	*arg="";
-	for(unsigned int i=0;i<recvline->length();i++){
+	*data="";
+	for(unsigned int i=0;i<strlen(recvline);i++){
 		//通过客户端保证命令之后是空格，参数之后是 | 
-		if((*recvline)[i]=='|')
+		if(recvline[i]=='|'){
+			*data=string(recvline+i+1);
 			break;
-		if((*recvline)[i]==' ')
+		}
+		if(recvline[i]==' ')
 			type=1;
 		else{
 			if(type==0)
-				*cmd+=(*recvline)[i];
+				*cmd+=recvline[i];
 			else
-				*arg+=(*recvline)[i];
+				*arg+=recvline[i];
 		}
 	}
 	return 0;
