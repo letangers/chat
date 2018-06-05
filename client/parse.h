@@ -21,7 +21,7 @@ int parse_command(string * cmdline){
 		if((*cmdline)[i]==' '||(*cmdline)[i]=='\t')
 			type=1;
 		else{
-			if(type==1)
+			if(type==0)
 				cmd+=(*cmdline)[i];
 			else
 				arg+=(*cmdline)[i];
@@ -33,9 +33,12 @@ int parse_command(string * cmdline){
 int parse_server(char *recvbuf){
 	cmd="";
 	arg="";	
+	int user=1;
 	for(unsigned int i=0;i<strlen(recvbuf);i++){
-		if(recvbuf[i]==' ')
+		if(recvbuf[i]==' '){
 			arg=string(recvbuf+i+1);
+			break;
+		}
 		else
 			cmd+=recvbuf[i];
 	}

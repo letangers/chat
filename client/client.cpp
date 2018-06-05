@@ -14,7 +14,7 @@ using namespace std;
 
 string sendbuf;
 string cmdline;
-
+string username="";
 int execute_showcommand(){
 	cout<<">>>show online"<<endl<<'\t';
 	cout<<"you can browse user list online"<<endl<<endl;
@@ -26,21 +26,23 @@ int execute_showcommand(){
 
 int execute(){
 	if (cmd=="show"){
-		sendbuf="showonline |";
-		return 0;
+		if(arg=="command"){
+			execute_showcommand();
+			return 1;
+		}
+		else if(arg=="online"){
+			sendbuf="showonline |";
+			return 0;
+		}
 	}
 	if (cmd=="sendto")
-		if(arg=="all"){
-			sendbuf="sendto all|";
-			return 0;
-		}
-		else{
-			cout<<"input the message to "<<arg<<">>>";
-			cmdline="";
-			getline(cin,cmdline);
-			sendbuf="sendto "+arg+"|"+cmdline;
-			return 0;
-		}
+	{
+		cout<<"input the message to "<<arg<<">>>";
+		cmdline="";
+		getline(cin,cmdline);
+		sendbuf="sendto "+arg+"|"+cmdline;
+		return 0;
+	}
 	return -1;
 }
 
@@ -51,23 +53,28 @@ void *send_to_service(void *args){
 	if(signal(SIGUSR1,endprocess)<0)
 		cerr<<"something wrong when installing sub SIGUSR1"<<endl;;
 	while(getline(cin,cmdline)){
-		sendbuf="";
-		cmdline="";
 		parse_command(&cmdline);
+		cout<<"--"<<cmd<<"--"<<arg<<"--"<<endl;
 		if (cmd=="exit"){
 			cout<<"exit"<<endl;
 			break;
 		}
-		if (cmd=="showcommand"){
-			execute_showcommand();
+		int execute_code=execute();
+		if (execute_code==1){
+			cout<<">>>";
 			continue;
 		}
-		if (execute()<0){
+		if (execute_code==-1){
 			cout<<"command wrong"<<endl;
+			cout<<">>>";
 			continue;
 		}
 		
 		send(sock,sendbuf.c_str(),sendbuf.length(),0);
+		cmdline="";
+		sendbuf="";
+		cout<<">>>";
+
 	}
 	close(sock);
 	exit(EXIT_SUCCESS);
@@ -91,7 +98,12 @@ void recv_from_service(){
 			break;
 		}
 		parse_server(recvbuf);
-		cout<<"[receive from "<<cmd<<"] "<<arg<<endl;
+		if(cmd=="online"){
+			cout<<"there are online user==="<<arg<<"==="<<endl;
+		}
+		else{
+			cout<<endl<<"[receive from "<<cmd<<"] "<<arg<<endl;
+		}
 		memset(recvbuf,0,sizeof(recvbuf));
 	}
 	close(sock);
@@ -109,6 +121,14 @@ int main(void){
 	if(connect(sock,(struct sockaddr*)&cliaddr,sizeof(cliaddr))<0)
 		cout<<"something wrong when connect"<<endl;
 
+	char recvbuf[1024]={0};
+	int ret=recv(sock,recvbuf,sizeof(recvbuf),0);
+	parse_server(recvbuf);
+	if(cmd=="请输入用户名"){
+		cout<<cmd<<">>>";
+		getline(cin,username);
+		send(sock,username.c_str(),username.length(),0);
+	}
 	pthread_t tid;
 	if(pthread_create(&tid,NULL,send_to_service,NULL)<0)
 		cerr<<"create thread failed"<<endl;
