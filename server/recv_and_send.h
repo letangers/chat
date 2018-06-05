@@ -2,6 +2,7 @@
 #define _RECV_AND_SEND_H_
 
 #include "init.h"
+#include "parse.h"
 #include <string>
 #include <sys/socket.h>
 #include <pthread.h>
@@ -10,36 +11,30 @@
 #include <unistd.h>
 using namespace std;
 
-string parse(char *recvbuf){
-	string temp;
-	unsigned int i;
-	for (i=0;i<strlen(recvbuf);i++){
-		if(recvbuf[i]==' ')
-			break;
-		temp+=recvbuf[i];
-	}
-	return temp;
-}
+
+
 
 void * send_and_recv(void * arg){
 	int sock=*((int *)arg);
 	char recvbuf[1024]={0};
-	char sendbuf[1024]="请输入用户名";
-	send(sock,sendbuf,strlen(sendbuf),0);
 	int ret;
-	ret=recv(sock,recvbuf,sizeof(recvbuf),0);
-	if(ret==0){
-		cout<<"connection break when recv the username "<<sock<<endl;
-		close(sock);
-		pthread_exit((void *)(-1));
-	}
-	if (ret==-1){
-		cerr<<"recv buf failed when recv the username "<<*((int *)arg)<<endl;
-		close(sock);
-		pthread_exit((void *)(-1));
-	}
 	string *username=new string;
-	*username=recvbuf;
+	do
+	{
+		
+		ret=recv(sock,recvbuf,sizeof(recvbuf),0);
+		if(ret==0){
+			cout<<"connection break when recv the username "<<sock<<endl;
+			close(sock);
+			pthread_exit((void *)(-1));
+		}
+		if (ret==-1){
+			cerr<<"recv buf failed when recv the username "<<*((int *)arg)<<endl;
+			close(sock);
+			pthread_exit((void *)(-1));
+		}
+		*username=recvbuf;
+	}while(online_user_table.count(*username)==1);
 	online_user_table.insert(pair<string,int>(*username,sock));
 	while (true){
 		memset(recvbuf,0,sizeof(recvbuf));
