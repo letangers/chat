@@ -12,9 +12,72 @@
 #include <pthread.h>
 using namespace std;
 
-string sendbuf;
-string cmdline;
+typedef struct PACKAGE{
+	int length;
+	string recvbuf;
+};
+
+
+
+string sendbuf="";
+string cmdline="";
 string username="";
+
+ssize_t sendn(int sockfd,const void *buf,size_t len,int flags)
+{
+	size_t nleft=len;
+	ssize_t nsend;
+
+	char * bufp=(char*)buf;
+
+	while(nleft>0)
+	{
+		if((nsend=send(sockfd,bufp,nleft,flags))<0)
+		{
+			if(errno==EINTR)
+				continue;
+			return -1;
+		}
+		else if (nsend==0)
+			continue;
+		bufp+=nsend;
+		nleft-=nsend;
+	}
+	return len;
+}
+
+
+
+ssize_t recvn(int sockfd,void*buf,size_t len,int flags)
+{
+	size_t nleft=len;
+	ssize_t nrecv;
+
+	char *bufp=(char *)buf;
+
+	while(nleft>0)
+	{
+		if((nrecv=recv(sockfd,bufp,nleft,flags))<0)
+			{
+				if(errno==EINTR)
+					continue;
+				return -1;
+			}
+		else if(nrecv==0)
+			return len-nleft;
+		bufp+=nrecv;
+		nleft-=nrecv;
+	}
+	return len;
+
+}
+
+
+
+
+
+
+
 int execute_showcommand(){
 	cout<<">>>show online"<<endl<<'\t';
 	cout<<"you can browse user list online"<<endl<<endl;
@@ -54,6 +117,7 @@ void *send_to_service(void *args){
 		cerr<<"something wrong when installing sub SIGUSR1"<<endl;;
 	while(getline(cin,cmdline)){
 		parse_command(&cmdline);
+		sendbuf="";
 		cout<<"--"<<cmd<<"--"<<arg<<"--"<<endl;
 		if (cmd=="exit"){
 			cout<<"exit"<<endl;
@@ -70,9 +134,8 @@ void *send_to_service(void *args){
 			continue;
 		}
 		
-		send(sock,sendbuf.c_str(),sendbuf.length(),0);
+		sendn(sock,sendbuf.c_str(),sendbuf.length(),0);
 		cmdline="";
-		sendbuf="";
 		cout<<">>>";
 
 	}
@@ -87,7 +150,7 @@ void recv_from_service(){
 		cerr<<"something wrong when installing SIGUSR1"<<endl;
 	char recvbuf[1024]={0};
 	while(true){
-		int ret=recv(sock,recvbuf,sizeof(recvbuf),0);
+		int ret=recvn(sock,recvbuf,sizeof(recvbuf),0);
 		if(ret==-1){
 			cout<<"接收失败"<<endl;
 			break;
@@ -122,12 +185,12 @@ int main(void){
 		cout<<"something wrong when connect"<<endl;
 
 	char recvbuf[1024]={0};
-	int ret=recv(sock,recvbuf,sizeof(recvbuf),0);
+	int ret=recvn(sock,recvbuf,/*sizeof(recvbuf)*/18,0);
 	parse_server(recvbuf);
 	if(cmd=="请输入用户名"){
 		cout<<cmd<<">>>";
 		getline(cin,username);
-		send(sock,username.c_str(),username.length(),0);
+		sendn(sock,username.c_str(),username.length(),0);
 	}
 	pthread_t tid;
 	if(pthread_create(&tid,NULL,send_to_service,NULL)<0)
