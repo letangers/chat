@@ -1,6 +1,7 @@
 #ifndef _RECV_AND_SEND_H_
 #define _RECV_AND_SEND_H_
 
+#include <errno.h>
 #include "init.h"
 #include "parse.h"
 #include <string>
@@ -27,7 +28,7 @@ ssize_t sendn(int sockfd,const void *buf,size_t len,int flags)
 
 	while(nleft>0)
 	{
-		if((nsend=send(sockfd,bufp,nleft,flags)<0))
+		if((nsend=send(sockfd,bufp,nleft,flags))<0)
 		{
 			if(errno==EINTR)
 				continue;
@@ -52,7 +53,7 @@ ssize_t recvn(int sockfd,void*buf,size_t len,int flags)
 
 	while(nleft>0)
 	{
-		if((nrecv=recv(sockfd,bufp,nleft,flags)<0))
+		if((nrecv=recv(sockfd,bufp,nleft,flags))<0)
 			{
 				if(errno==EINTR)
 					continue;
@@ -96,6 +97,7 @@ void * send_and_recv(void * arg){
 	{
 		*data="请输入用户名";
 		sendn(sock,data->c_str(),data->length(),0);
+		cout<<"sendn函数已执行完"<<endl;
 		ret=recvn(sock,recvbuf,sizeof(recvbuf),0);
 		cout<<"用户输入用户名>>>"<<recvbuf<<endl;
 		if(ret==0){
