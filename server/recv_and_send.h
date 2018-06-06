@@ -18,6 +18,57 @@ pthread_key_t data;
 pthread_key_t iter;
 */
 
+ssize_t sendn(int sockfd,const void *buf,size_t len,int flags)
+{
+	size_t nleft=len;
+	ssize_t nsend;
+
+	char * bufp=(char*)buf;
+
+	while(nleft>0)
+	{
+		if((nsend=send(sockfd,bufp,nleft,flags)<0))
+		{
+			if(errno==EINTR)
+				continue;
+			return -1;
+		}
+		else if (nsend==0)
+			continue;
+		bufp+=nsend;
+		nleft-=nsend;
+	}
+	return len;
+}
+
+
+
+ssize_t recvn(int sockfd,void*buf,size_t len,int flags)
+{
+	size_t nleft=len;
+	ssize_t nrecv;
+
+	char *bufp=(char *)buf;
+
+	while(nleft>0)
+	{
+		if((nrecv=recv(sockfd,bufp,nleft,flags)<0))
+			{
+				if(errno==EINTR)
+					continue;
+				return -1;
+			}
+		else if(nrecv==0)
+			return len-nleft;
+		bufp+=nrecv;
+		nleft-=nrecv;
+	}
+	return len;
+
+}
+
+
+
 void * send_and_recv(void * arg){
 	int sock=*((int *)arg);
 	char recvbuf[1024]={0};
@@ -44,8 +95,8 @@ void * send_and_recv(void * arg){
 	do
 	{
 		*data="请输入用户名";
-		send(sock,data->c_str(),data->length(),0);
-		ret=recv(sock,recvbuf,sizeof(recvbuf),0);
+		sendn(sock,data->c_str(),data->length(),0);
+		ret=recvn(sock,recvbuf,sizeof(recvbuf),0);
 		cout<<"用户输入用户名>>>"<<recvbuf<<endl;
 		if(ret==0){
 			cout<<"connection break when recv the username "<<sock<<endl;
@@ -62,7 +113,7 @@ void * send_and_recv(void * arg){
 	online_user_table.insert(pair<string,int>(*username,sock));
 	while (true){
 		memset(recvbuf,0,sizeof(recvbuf));
-		ret=recv(sock,recvbuf,sizeof(recvbuf),0);
+		ret=recvn(sock,recvbuf,sizeof(recvbuf),0);
 		if(ret==0)
 		{
 			cout<<"connection break  "<<*((int *)arg)<<endl;
@@ -90,7 +141,7 @@ void * send_and_recv(void * arg){
 				for(*iter=online_user_table.begin();*iter!=online_user_table.end();(*iter)++)
 				{
 					*data=*username+" "+*data;
-					send((*iter)->second,data->c_str(),data->length(),0);
+					sendn((*iter)->second,data->c_str(),data->length(),0);
 				}
 				continue;
 			}
@@ -104,7 +155,7 @@ void * send_and_recv(void * arg){
 		}
 		cout<<"发出的数据是"<<*data<<endl;
 		cout<<recvbuf<<endl;
-		send(online_user_table[*args],data->c_str(),data->length(),0);
+		sendn(online_user_table[*args],data->c_str(),data->length(),0);
 	}
 	close(sock);
 	return (void*)0;
