@@ -11,13 +11,6 @@
 #include <cstring>
 #include <unistd.h>
 using namespace std;
-/*
-pthread_key_t username;
-pthread_key_t cmd;
-pthread_key_t args;
-pthread_key_t data;
-pthread_key_t iter;
-*/
 
 ssize_t sendn(int sockfd,const void *buf,size_t len,int flags)
 {
@@ -73,30 +66,21 @@ ssize_t recvn(int sockfd,void*buf,size_t len,int flags)
 void * send_and_recv(void * arg){
 	int sock=*((int *)arg);
 	char recvbuf[1024]={0};
+	char sendbuf[1024];
 	int ret;
 	string *username=new string("");
 	string *cmd=new string("");
 	string *args=new string("");
 	string *data=new string("");
-	/*
-	string user="";
-	string command="";
-	string arguments="";
-	string data_part="";
-	*/
 	map<string,int>::iterator *iter=new map<string,int>::iterator;	
-/*
-	pthread_setspecific(cmd,(void*)&command);
-	pthread_setspecific(args,(void*)&arguments);
-	pthread_setspecific(data,(void*)&data_part);
-	pthread_setspecific(username,(void*)&user);
-	pthread_setspecific(iter,(void*)&it);
-*/
+	
+	memset(sendbuf,0,sizeof(sendbuf));
+	memset(recvbuf,0,sizeof(recvbuf));
 
 	do
 	{
-		*data="请输入用户名";
-		sendn(sock,data->c_str(),data->length(),0);
+		strcpy(sendbuf,"请输入用户名");
+		sendn(sock,sendbuf,sizeof(sendbuf),0);
 		cout<<"sendn函数已执行完"<<endl;
 		ret=recvn(sock,recvbuf,sizeof(recvbuf),0);
 		cout<<"用户输入用户名>>>"<<recvbuf<<endl;
@@ -115,6 +99,7 @@ void * send_and_recv(void * arg){
 	online_user_table.insert(pair<string,int>(*username,sock));
 	while (true){
 		memset(recvbuf,0,sizeof(recvbuf));
+		memset(recvbuf,0,sizeof(sendbuf));
 		ret=recvn(sock,recvbuf,sizeof(recvbuf),0);
 		if(ret==0)
 		{
@@ -140,10 +125,13 @@ void * send_and_recv(void * arg){
 		}
 		if(*cmd=="sendto"){
 			if(*args=="all"){
+				string temp;
 				for(*iter=online_user_table.begin();*iter!=online_user_table.end();(*iter)++)
 				{
-					*data=*username+" "+*data;
-					sendn((*iter)->second,data->c_str(),data->length(),0);
+					temp=*data;
+					temp=*username+" "+temp;
+					strcpy(sendbuf,temp.c_str());
+					sendn((*iter)->second,sendbuf,sizeof(sendbuf),0);
 				}
 				continue;
 			}
@@ -156,8 +144,9 @@ void * send_and_recv(void * arg){
 			}
 		}
 		cout<<"发出的数据是"<<*data<<endl;
+		strcpy(sendbuf,data->c_str());
 		cout<<recvbuf<<endl;
-		sendn(online_user_table[*args],data->c_str(),data->length(),0);
+		sendn(online_user_table[*args],sendbuf,sizeof(sendbuf),0);
 	}
 	close(sock);
 	return (void*)0;
