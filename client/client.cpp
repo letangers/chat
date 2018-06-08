@@ -20,8 +20,8 @@ typedef struct PACKAGE{
 
 string cmdline="";
 string username="";
-char sendbuf[1024];
-char recvbuf[1024];
+package sendbuf;
+package recvbuf;
 
 ssize_t sendn(int sockfd,const void *buf,size_t len,int flags)
 {
@@ -89,7 +89,7 @@ int execute(){
 			return 1;
 		}
 		else if(arg=="online"){
-			strcpy(sendbuf,"showonline |");
+			strcpy(sendbuf.body,"showonline |");
 			return 0;
 		}
 	}
@@ -99,7 +99,7 @@ int execute(){
 		cmdline="";
 		getline(cin,cmdline);
 		string temp="sendto "+arg+"|"+cmdline;
-		strcpy(sendbuf,temp.c_str());
+		strcpy(sendbuf.body,temp.c_str());
 		return 0;
 	}
 	return -1;
@@ -111,9 +111,10 @@ void *send_to_service(void *args){
 		cerr<<"something wrong when installing sub signal"<<endl;
 	if(signal(SIGUSR1,endprocess)<0)
 		cerr<<"something wrong when installing sub SIGUSR1"<<endl;;
+	int n;
 	while(getline(cin,cmdline)){
 		parse_command(&cmdline);
-		memset(sendbuf,0,sizeof(sendbuf));
+		memset(&sendbuf,0,sizeof(sendbuf));
 		cout<<"--"<<cmd<<"--"<<arg<<"--"<<endl;
 		if (cmd=="exit"){
 			cout<<"exit"<<endl;
@@ -129,8 +130,9 @@ void *send_to_service(void *args){
 			cout<<">>>";
 			continue;
 		}
-		
-		sendn(sock,sendbuf,sizeof(sendbuf),0);
+		n=strlen(sendbuf.body);
+		sendbuf.length=htonl(n);
+		sendn(sock,&sendbuf,4+n,0);
 		cmdline="";
 		cout<<">>>";
 
@@ -144,8 +146,21 @@ void recv_from_service(){
 		cerr<<"something wrong when installing signal"<<endl;
 	if(signal(SIGUSR1,endprocess)<0)
 		cerr<<"something wrong when installing SIGUSR1"<<endl;
+	int n;
 	while(true){
-		int ret=recvn(sock,recvbuf,sizeof(recvbuf),0);
+		memset(&recvbuf,0,sizeof(recvbuf));
+		int ret=recvn(sock,&recvbuf.length,4,0);
+		if(ret==-1){
+			cerr<<"接收首部四个字节时出错"<<endl;
+			break;
+		}
+		else if(ret<4){
+			cerr<<"服务端关闭"<<endl;
+			break;
+		}
+		n=ntohl(recvbuf.length);
+
+		ret=recvn(sock,recvbuf.body,n,0);
 		if(ret==-1){
 			cout<<"接收失败"<<endl;
 			break;
@@ -155,14 +170,13 @@ void recv_from_service(){
 			cout<<"服务端断开了连接"<<endl;
 			break;
 		}
-		parse_server(recvbuf);
+		parse_server(recvbuf.body);
 		if(cmd=="online"){
 			cout<<"there are online user==="<<arg<<"==="<<endl;
 		}
 		else{
 			cout<<endl<<"[receive from "<<cmd<<"] "<<arg<<endl;
 		}
-		memset(recvbuf,0,sizeof(recvbuf));
 	}
 	close(sock);
 }
@@ -179,15 +193,20 @@ int main(void){
 	if(connect(sock,(struct sockaddr*)&cliaddr,sizeof(cliaddr))<0)
 		cout<<"something wrong when connect"<<endl;
 
-	memset(sendbuf,0,sizeof(sendbuf));
-	memset(recvbuf,0,sizeof(recvbuf));
-	int ret=recvn(sock,recvbuf,sizeof(recvbuf),0);
-	parse_server(recvbuf);
+	memset(&sendbuf,0,sizeof(sendbuf));
+	memset(&recvbuf,0,sizeof(recvbuf));
+	int n;
+	int ret=recvn(sock,&recvbuf.length,4,0);
+	n=ntohl(recvbuf.length);
+	ret=recvn(sock,recvbuf.body,n,0);
+	parse_server(recvbuf.body);
 	if(cmd=="请输入用户名"){
 		cout<<cmd<<">>>";
 		getline(cin,username);
-		strcpy(sendbuf,username.c_str());
-		sendn(sock,sendbuf,sizeof(sendbuf),0);
+		strcpy(sendbuf.body,username.c_str());
+		n=strlen(sendbuf.body);
+		sendbuf.length=htonl(n);
+		sendn(sock,&sendbuf,n+4,0);
 	}
 	pthread_t tid;
 	if(pthread_create(&tid,NULL,send_to_service,NULL)<0)
