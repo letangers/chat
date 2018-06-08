@@ -73,11 +73,6 @@ ssize_t recvn(int sockfd,void*buf,size_t len,int flags)
 }
 
 
-
-
-
-
-
 int execute_showcommand(){
 	cout<<">>>show online"<<endl<<'\t';
 	cout<<"you can browse user list online"<<endl<<endl;
