@@ -14,14 +14,14 @@ using namespace std;
 
 typedef struct PACKAGE{
 	int length;
-	string recvbuf;
-};
+	char body[1024];
+}package;
 
 
-
-string sendbuf="";
 string cmdline="";
 string username="";
+char sendbuf[1024];
+char recvbuf[1024];
 
 ssize_t sendn(int sockfd,const void *buf,size_t len,int flags)
 {
@@ -94,7 +94,7 @@ int execute(){
 			return 1;
 		}
 		else if(arg=="online"){
-			sendbuf="showonline |";
+			strcpy(sendbuf,"showonline |");
 			return 0;
 		}
 	}
@@ -103,7 +103,8 @@ int execute(){
 		cout<<"input the message to "<<arg<<">>>";
 		cmdline="";
 		getline(cin,cmdline);
-		sendbuf="sendto "+arg+"|"+cmdline;
+		string temp="sendto "+arg+"|"+cmdline;
+		strcpy(sendbuf,temp.c_str());
 		return 0;
 	}
 	return -1;
@@ -117,7 +118,7 @@ void *send_to_service(void *args){
 		cerr<<"something wrong when installing sub SIGUSR1"<<endl;;
 	while(getline(cin,cmdline)){
 		parse_command(&cmdline);
-		sendbuf="";
+		memset(sendbuf,0,sizeof(sendbuf));
 		cout<<"--"<<cmd<<"--"<<arg<<"--"<<endl;
 		if (cmd=="exit"){
 			cout<<"exit"<<endl;
@@ -134,7 +135,7 @@ void *send_to_service(void *args){
 			continue;
 		}
 		
-		sendn(sock,sendbuf.c_str(),sendbuf.length(),0);
+		sendn(sock,sendbuf,sizeof(sendbuf),0);
 		cmdline="";
 		cout<<">>>";
 
@@ -148,7 +149,6 @@ void recv_from_service(){
 		cerr<<"something wrong when installing signal"<<endl;
 	if(signal(SIGUSR1,endprocess)<0)
 		cerr<<"something wrong when installing SIGUSR1"<<endl;
-	char recvbuf[1024]={0};
 	while(true){
 		int ret=recvn(sock,recvbuf,sizeof(recvbuf),0);
 		if(ret==-1){
@@ -184,13 +184,15 @@ int main(void){
 	if(connect(sock,(struct sockaddr*)&cliaddr,sizeof(cliaddr))<0)
 		cout<<"something wrong when connect"<<endl;
 
-	char recvbuf[1024]={0};
-	int ret=recvn(sock,recvbuf,/*sizeof(recvbuf)*/18,0);
+	memset(sendbuf,0,sizeof(sendbuf));
+	memset(recvbuf,0,sizeof(recvbuf));
+	int ret=recvn(sock,recvbuf,sizeof(recvbuf),0);
 	parse_server(recvbuf);
 	if(cmd=="请输入用户名"){
 		cout<<cmd<<">>>";
 		getline(cin,username);
-		sendn(sock,username.c_str(),username.length(),0);
+		strcpy(sendbuf,username.c_str());
+		sendn(sock,sendbuf,sizeof(sendbuf),0);
 	}
 	pthread_t tid;
 	if(pthread_create(&tid,NULL,send_to_service,NULL)<0)
