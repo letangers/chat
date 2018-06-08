@@ -5,12 +5,19 @@
 #include "init.h"
 #include "parse.h"
 #include <string>
+#include <arpa/inet.h>
 #include <sys/socket.h>
 #include <pthread.h>
 #include <iostream>
 #include <cstring>
 #include <unistd.h>
 using namespace std;
+
+typedef struct PACKAGE{
+	int length;
+	char body[1024];
+}package;
+
 
 ssize_t sendn(int sockfd,const void *buf,size_t len,int flags)
 {
@@ -65,25 +72,29 @@ ssize_t recvn(int sockfd,void*buf,size_t len,int flags)
 
 void * send_and_recv(void * arg){
 	int sock=*((int *)arg);
-	char recvbuf[1024]={0};
-	char sendbuf[1024];
+	package recvbuf;
+	package sendbuf;
+	memset(&sendbuf,0,sizeof(sendbuf));
+	memset(&recvbuf,0,sizeof(recvbuf));
 	int ret;
+	int n;
 	string *username=new string("");
 	string *cmd=new string("");
 	string *args=new string("");
 	string *data=new string("");
 	map<string,int>::iterator *iter=new map<string,int>::iterator;	
 	
-	memset(sendbuf,0,sizeof(sendbuf));
-	memset(recvbuf,0,sizeof(recvbuf));
-
 	do
 	{
-		strcpy(sendbuf,"请输入用户名");
-		sendn(sock,sendbuf,sizeof(sendbuf),0);
+		strcpy(sendbuf.body,"请输入用户名");
+		n=strlen(sendbuf.body);
+		sendbuf.length=htonl(n);
+		sendn(sock,&sendbuf,n+4,0);
 		cout<<"sendn函数已执行完"<<endl;
-		ret=recvn(sock,recvbuf,sizeof(recvbuf),0);
-		cout<<"用户输入用户名>>>"<<recvbuf<<endl;
+		ret=recvn(sock,&recvbuf.length,4,0);
+		n=htonl(recvbuf.length);
+		ret=recvn(sock,recvbuf.body,n,0);
+		cout<<"用户输入用户名>>>"<<recvbuf.body<<endl;
 		if(ret==0){
 			cout<<"connection break when recv the username "<<sock<<endl;
 			close(sock);
@@ -94,13 +105,15 @@ void * send_and_recv(void * arg){
 			close(sock);
 			pthread_exit((void *)(-1));
 		}
-		*username=recvbuf;
+		*username=recvbuf.body;
 	}while(online_user_table.count(*username)==1);
 	online_user_table.insert(pair<string,int>(*username,sock));
 	while (true){
-		memset(recvbuf,0,sizeof(recvbuf));
-		memset(recvbuf,0,sizeof(sendbuf));
-		ret=recvn(sock,recvbuf,sizeof(recvbuf),0);
+		memset(&recvbuf,0,sizeof(recvbuf));
+		memset(&sendbuf,0,sizeof(sendbuf));
+		ret=recvn(sock,&recvbuf.length,4,0);
+		n=htonl(recvbuf.length);
+		ret=recvn(sock,recvbuf.body,n,0);
 		if(ret==0)
 		{
 			cout<<"connection break  "<<*((int *)arg)<<endl;
@@ -113,7 +126,7 @@ void * send_and_recv(void * arg){
 		}
 		     else 
 			cout<<"everything is ok  "<<*((int *)arg)<<endl;
-		parse_command(recvbuf,cmd,args,data);
+		parse_command(recvbuf.body,cmd,args,data);
 		cout<<"收到的命令是"<<*cmd<<endl;
 		cout<<"参数为"<<*args<<endl;
 		cout<<"数据为"<<*data<<endl;
@@ -130,8 +143,10 @@ void * send_and_recv(void * arg){
 				{
 					temp=*data;
 					temp=*username+" "+temp;
-					strcpy(sendbuf,temp.c_str());
-					sendn((*iter)->second,sendbuf,sizeof(sendbuf),0);
+					strcpy(sendbuf.body,temp.c_str());
+					n=strlen(sendbuf.body);
+					sendbuf.length=htonl(n);
+					sendn((*iter)->second,&sendbuf,n+4,0);
 				}
 				continue;
 			}
@@ -144,9 +159,10 @@ void * send_and_recv(void * arg){
 			}
 		}
 		cout<<"发出的数据是"<<*data<<endl;
-		strcpy(sendbuf,data->c_str());
-		cout<<recvbuf<<endl;
-		sendn(online_user_table[*args],sendbuf,sizeof(sendbuf),0);
+		strcpy(sendbuf.body,data->c_str());
+		n=strlen(sendbuf.body);
+		sendbuf.length=htonl(n);
+		sendn(online_user_table[*args],&sendbuf,n+4,0);
 	}
 	close(sock);
 	return (void*)0;
