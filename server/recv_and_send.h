@@ -126,6 +126,12 @@ void * send_and_recv(void * arg){
 		sendbuf.length=htonl(n);
 		sendn(online_user_table[*args],&sendbuf,n+4,0);
 	}
+	online_user_table.erase(*username);
+	delete username;
+	delete cmd;
+	delete args;
+	delete data;
+	delete iter;
 	close(sock);
 	return (void*)0;
 }
