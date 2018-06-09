@@ -1,26 +1,25 @@
 #ifndef _PARSE_H_
 #define _PARSE_H_
 
+#include "init.h"
 #include <iostream>
 #include <string>
 #include <cstring>
 using namespace std;
 
-//sendto sb;
-//show online;
-//showcommand;
 
-string cmd="";
-string arg="";
-
-int parse_command(string * cmdline){
+//解析用户输入
+int parse_command(string * cmdline)
+{
 	int type=0;
 	cmd="";
 	arg="";
-	for(unsigned int i=0;i<(*cmdline).length();i++){
+	for(unsigned int i=0;i<(*cmdline).length();i++)
+	{
 		if((*cmdline)[i]==' '||(*cmdline)[i]=='\t')
 			type=1;
-		else{
+		else
+		{
 			if(type==0)
 				cmd+=(*cmdline)[i];
 			else
@@ -30,12 +29,47 @@ int parse_command(string * cmdline){
 	return 0;
 }
 
-int parse_server(char *recvbuf){
+//执行解析出的命令
+int execute()
+{
+	if (cmd=="show")
+	{
+		if(arg=="command")
+		{
+			cout<<">>>show online"<<endl<<'\t';
+			cout<<"you can browse user list online"<<endl<<endl;
+			cout<<">>>sendto sb"<<endl<<'\t';
+			cout<<"you can send message to someone online,if the arg is all,send the message to all online"<<endl;
+			return 1;
+		}
+		else if(arg=="online")
+		{
+			strcpy(sendbuf.body,"showonline |");
+			return 0;
+		}
+	}
+	if (cmd=="sendto")
+	{
+		cout<<"input the message to "<<arg<<">>>";
+		cmdline="";
+		getline(cin,cmdline);
+		string temp="sendto "+arg+"|"+cmdline;
+		strcpy(sendbuf.body,temp.c_str());
+		return 0;
+	}
+	return -1;
+}
+
+//解析接收到的数据
+int parse_server(char *recvbuf)
+{
 	cmd="";
 	arg="";	
 	int user=1;
-	for(unsigned int i=0;i<strlen(recvbuf);i++){
-		if(recvbuf[i]==' '){
+	for(unsigned int i=0;i<strlen(recvbuf);i++)
+	{
+		if(recvbuf[i]==' ')
+		{
 			arg=string(recvbuf+i+1);
 			break;
 		}
