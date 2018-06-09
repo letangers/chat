@@ -22,7 +22,7 @@ int main(void){
 	servaddr.sin_addr.s_addr=inet_addr("0.0.0.0");
 	
 	int on=1;
-	//开启地址重复利用
+	//开启地址重复利用(TIME-WAIT时可以启用被占用的端口)
 	if(setsockopt(listenfd,SOL_SOCKET,SO_REUSEADDR,&on,sizeof(on))<0)
 		cerr<<"开启地址重复利用时出错"<<endl;
 
@@ -33,29 +33,17 @@ int main(void){
 	
 	struct sockaddr_in peeraddr;
 	socklen_t peerlen=sizeof(peeraddr);
-/*
-	pthread_key_create(&username,NULL);
-	pthread_key_create(&cmd,NULL);
-	pthread_key_create(&args,NULL);
-	pthread_key_create(&data,NULL);
-	pthread_key_create(&iter,NULL);
-	*/
-	while(true){
-	int *conn=new int;
- 	if((*conn=accept(listenfd,(struct sockaddr*)&peeraddr,&peerlen))<0)
-		cerr<<"something wrong when accept"<<endl;
-	cout<<"ip:"<<inet_ntoa(peeraddr.sin_addr)<<"  port:"<<ntohs(peeraddr.sin_port)<<endl;
-	pthread_t tid;
-	if(pthread_create(&tid,NULL,send_and_recv,conn)<0)
-		cerr<<"create thread failed"<<endl;
+	while(true)
+	{
+		int *conn=new int;
+ 		if((*conn=accept(listenfd,(struct sockaddr*)&peeraddr,&peerlen))<0)
+			cerr<<"something wrong when accept"<<endl;
+		cout<<"ip:"<<inet_ntoa(peeraddr.sin_addr)<<"  port:"<<ntohs(peeraddr.sin_port)<<endl;
+		//开启新线程，每个线程处理一个连接
+		pthread_t tid;
+		if(pthread_create(&tid,NULL,send_and_recv,conn)<0)
+			cerr<<"create thread failed"<<endl;
 	}
-	/*
-	pthread_key_delete(username);
-	pthread_key_delete(cmd);
-	pthread_key_delete(args);
-	pthread_key_delete(data);
-	pthread_key_dalete(iter);
-	*/
 	close(listenfd);
 	return 0;
 }

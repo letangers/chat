@@ -6,7 +6,7 @@ using namespace std;
 
 #define MAXARG 10
 
-
+//解析接收到的命令
 int parse_command(char *recvline,string *cmd,string *arg,string * data){
 	int type=0;
 	*cmd="";

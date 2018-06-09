@@ -1,135 +1,95 @@
 #ifndef _RECV_AND_SEND_H_
 #define _RECV_AND_SEND_H_
 
-#include <errno.h>
 #include "init.h"
 #include "parse.h"
-#include <string>
+
+#include <errno.h>
+#include <unistd.h>
+
 #include <arpa/inet.h>
 #include <sys/socket.h>
+
 #include <pthread.h>
-#include <iostream>
+
 #include <cstring>
-#include <unistd.h>
+#include <string>
+#include <iostream>
 using namespace std;
-
-typedef struct PACKAGE{
-	int length;
-	char body[1024];
-}package;
-
-
-ssize_t sendn(int sockfd,const void *buf,size_t len,int flags)
-{
-	size_t nleft=len;
-	ssize_t nsend;
-
-	char * bufp=(char*)buf;
-
-	while(nleft>0)
-	{
-		if((nsend=send(sockfd,bufp,nleft,flags))<0)
-		{
-			if(errno==EINTR)
-				continue;
-			return -1;
-		}
-		else if (nsend==0)
-			continue;
-		bufp+=nsend;
-		nleft-=nsend;
-	}
-	return len;
-}
-
-
-
-ssize_t recvn(int sockfd,void*buf,size_t len,int flags)
-{
-	size_t nleft=len;
-	ssize_t nrecv;
-
-	char *bufp=(char *)buf;
-
-	while(nleft>0)
-	{
-		if((nrecv=recv(sockfd,bufp,nleft,flags))<0)
-			{
-				if(errno==EINTR)
-					continue;
-				return -1;
-			}
-		else if(nrecv==0)
-			return len-nleft;
-		bufp+=nrecv;
-		nleft-=nrecv;
-	}
-	return len;
-
-}
-
 
 
 void * send_and_recv(void * arg){
+	//参数传入套接字，保存在sock中
 	int sock=*((int *)arg);
+	//接收缓冲区
 	package recvbuf;
+	//发送缓冲区
 	package sendbuf;
 	memset(&sendbuf,0,sizeof(sendbuf));
 	memset(&recvbuf,0,sizeof(recvbuf));
 	int ret;
+	//保存结构体首部
 	int n;
+	//保存对应套接字用户名
 	string *username=new string("");
+	//保存解析出来的命令
 	string *cmd=new string("");
+	//保存解析出来的参数
 	string *args=new string("");
+	//保存解析出来的数据
 	string *data=new string("");
+	//用户列表迭代器
 	map<string,int>::iterator *iter=new map<string,int>::iterator;	
 	
+	//将用户名和sock建立联系
 	do
 	{
 		strcpy(sendbuf.body,"请输入用户名");
 		n=strlen(sendbuf.body);
 		sendbuf.length=htonl(n);
 		sendn(sock,&sendbuf,n+4,0);
-		cout<<"sendn函数已执行完"<<endl;
 		ret=recvn(sock,&recvbuf.length,4,0);
 		n=htonl(recvbuf.length);
 		ret=recvn(sock,recvbuf.body,n,0);
 		cout<<"用户输入用户名>>>"<<recvbuf.body<<endl;
-		if(ret==0){
-			cout<<"connection break when recv the username "<<sock<<endl;
+		if(ret==0)
+		{
+			cout<<"connection break when recv username"<<sock<<endl;
 			close(sock);
 			pthread_exit((void *)(-1));
 		}
 		if (ret==-1){
-			cerr<<"recv buf failed when recv the username "<<*((int *)arg)<<endl;
+			cerr<<"recv username failed"<<sock<<endl;
 			close(sock);
 			pthread_exit((void *)(-1));
 		}
 		*username=recvbuf.body;
 	}while(online_user_table.count(*username)==1);
 	online_user_table.insert(pair<string,int>(*username,sock));
+
+	//服务器转发
 	while (true){
 		memset(&recvbuf,0,sizeof(recvbuf));
 		memset(&sendbuf,0,sizeof(sendbuf));
+		
+		//接收来源命令
 		ret=recvn(sock,&recvbuf.length,4,0);
 		n=htonl(recvbuf.length);
 		ret=recvn(sock,recvbuf.body,n,0);
 		if(ret==0)
 		{
-			cout<<"connection break  "<<*((int *)arg)<<endl;
+			cout<<"connection break  "<<sock<<endl;
 			break;
 		}
-		else if (ret==-1)
+		if (ret==-1)
 		{
-			cerr<<"recv buf failed  "<<*((int *)arg)<<endl;
+			cerr<<"recv buf failed  "<<sock<<endl;
 			break;
 		}
-		     else 
-			cout<<"everything is ok  "<<*((int *)arg)<<endl;
+		
+		//解析命令
 		parse_command(recvbuf.body,cmd,args,data);
-		cout<<"收到的命令是"<<*cmd<<endl;
-		cout<<"参数为"<<*args<<endl;
-		cout<<"数据为"<<*data<<endl;
+		cout<<"命令:"<<*cmd<<" |参数:"<<*args<<" |数据:"<<*data<<endl;
 		if(*cmd=="showonline"){
 			for(*iter=online_user_table.begin();*iter!=online_user_table.end();(*iter)++)
 				*data+=(*iter)->first;
@@ -158,6 +118,8 @@ void * send_and_recv(void * arg){
 				*data=*username+" "+*data;	
 			}
 		}
+
+		//发送数据
 		cout<<"发出的数据是"<<*data<<endl;
 		strcpy(sendbuf.body,data->c_str());
 		n=strlen(sendbuf.body);
