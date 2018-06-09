@@ -2,7 +2,7 @@
 #define _INIT_H_
 
 #include <sys/socket.h>
-#include <error.h>
+#include <errno.h>
 #include <map>
 #include <string>
 using namespace std;
