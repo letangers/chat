@@ -101,7 +101,7 @@ void recv_from_service(){
 			continue;
 		}
 		if(cmd=="online"){
-			cout<<"there are online user["<<arg<<"]"<<endl;
+			cout<<"there are online user |"<<arg<<endl;
 		}
 		else
 		{
