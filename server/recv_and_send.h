@@ -92,7 +92,10 @@ void * send_and_recv(void * arg){
 		cout<<"命令:"<<*cmd<<" |参数:"<<*args<<" |数据:"<<*data<<endl;
 		if(*cmd=="showonline"){
 			for(*iter=online_user_table.begin();*iter!=online_user_table.end();(*iter)++)
+			{
 				*data+=(*iter)->first;
+				*data+='|';
+			}
 			*args=*username;
 			*data="online "+*data;
 		}
