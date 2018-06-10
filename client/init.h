@@ -36,12 +36,31 @@ string cmd="";
 string arg="";
 
 
+//一次性初始化变量
+pthread_once_t once_control=PTHREAD_ONCE_INIT;
+
+//read线程和send线程对sendbuf访问要进行同步
+pthread_mutex_t sendbuf_mutex;
+//send线程要在sendbuf非空时才执行
+pthread_cond_t not_empty;
+
 //处理Ctrl+C
 void handle(int sig){
 	close(sock);
 	cout<<"recv signal SIGINT"<<endl;
 	exit(EXIT_SUCCESS);
 }
+
+//一次性初始化函数
+void init_routine(){
+	if(pthread_mutex_init(&sendbuf_mutex,NULL)<0)
+		cerr<<"init mutex failed"<<endl;
+	
+	if(pthread_cond_init(&not_empty,NULL)<0)
+		cerr<<"init conf failed"<<endl;
+
+}
+
 
 //发送函数
 ssize_t sendn(int sockfd,const void *buf,size_t len,int flags)

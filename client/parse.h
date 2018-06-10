@@ -43,8 +43,12 @@ int execute()
 			return 1;
 		}
 		else if(arg=="online")
-		{
+		{	
+			pthread_mutex_lock(&sendbuf_mutex);
 			strcpy(sendbuf.body,"showonline |");
+			if(pthread_cond_signal(&not_empty)<0)
+				cerr<<"signal not_empty failed"<<endl;
+			pthread_mutex_unlock(&sendbuf_mutex);
 			return 0;
 		}
 	}
@@ -54,7 +58,11 @@ int execute()
 		cmdline="";
 		getline(cin,cmdline);
 		string temp="sendto "+arg+"|"+cmdline;
+		pthread_mutex_lock(&sendbuf_mutex);
 		strcpy(sendbuf.body,temp.c_str());
+		if(pthread_cond_signal(&not_empty)<0)
+			cerr<<"signal not_empty failed"<<endl;
+		pthread_mutex_unlock(&sendbuf_mutex);
 		return 0;
 	}
 	return -1;

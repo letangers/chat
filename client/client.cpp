@@ -23,13 +23,37 @@ void *send_to_service(void *args)
 		cerr<<"something wrong when installing sub signal"<<endl;
 	//保存发送时首部数据，即body长度
 	int n;
+	while(true){
+		pthread_mutex_lock(&sendbuf_mutex);
+		if(strlen(sendbuf.body)==0)
+		{
+			cout<<"wait for not_empty"<<endl;
+			if(pthread_cond_wait(&not_empty,&sendbuf_mutex)<0)
+				cerr<<"wait not_empty failed"<<endl;
+		}
+	
+		n=strlen(sendbuf.body);
+		sendbuf.length=htonl(n);
+		sendn(sock,&sendbuf,4+n,0);
+		memset(&sendbuf,0,sizeof(sendbuf));
+		pthread_mutex_unlock(&sendbuf_mutex);
+	}
+	close(sock);
+	exit(EXIT_SUCCESS);
+	return (void *)0;
+}
+
+void * read_from_local(void *args){
 	while(getline(cin,cmdline))
 	{
-		memset(&sendbuf,0,sizeof(sendbuf));
 		if(is_username)
 		{
 			is_username=false;
+			pthread_mutex_lock(&sendbuf_mutex);
 			strcpy(sendbuf.body,cmdline.c_str());
+			if(pthread_cond_signal(&not_empty)<0)
+				cerr<<"signal not_empty failed"<<endl;
+			pthread_mutex_unlock(&sendbuf_mutex);
 			username=cmdline;
 		}
 		else
@@ -52,16 +76,12 @@ void *send_to_service(void *args)
 				continue;
 			}
 		}
-		n=strlen(sendbuf.body);
-		sendbuf.length=htonl(n);
-		sendn(sock,&sendbuf,4+n,0);
 		cmdline="";
-
 	}
-	close(sock);
-	exit(EXIT_SUCCESS);
 	return (void *)0;
 }
+
+
 void recv_from_service(){
 	if(signal(SIGINT,handle)<0)
 		cerr<<"something wrong when installing signal"<<endl;
@@ -128,10 +148,26 @@ int main(void){
 
 	memset(&sendbuf,0,sizeof(sendbuf));
 	memset(&recvbuf,0,sizeof(recvbuf));
-	pthread_t tid;
-	if(pthread_create(&tid,NULL,send_to_service,NULL)<0)
-		cerr<<"create thread failed"<<endl;
+
+	pthread_once(&once_control,init_routine);
+
+	//主线程接收来在服务器的数据
+	//send线程向服务器发送数据，read线程从本地读取要发送的数据
+	pthread_t send_tid,read_tid;
+	if(pthread_create(&send_tid,NULL,send_to_service,NULL)<0)
+		cerr<<"create send thread failed"<<endl;
+	if(pthread_create(&read_tid,NULL,read_from_local,NULL)<0)
+		cerr<<"create read thread failed"<<endl;
 	
+
 	recv_from_service();
+
+	int *rval;
+	pthread_join(send_tid,(void **)&rval);
+	pthread_join(read_tid,(void **)&rval);
+
+	pthread_cond_destroy(&not_empty);
+	pthread_mutex_destroy(&sendbuf_mutex);
+	
 	return 0;
 }
