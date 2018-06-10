@@ -65,7 +65,6 @@ int parse_server(char *recvbuf)
 {
 	cmd="";
 	arg="";	
-	int user=1;
 	for(unsigned int i=0;i<strlen(recvbuf);i++)
 	{
 		if(recvbuf[i]==' ')
