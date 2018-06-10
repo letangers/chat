@@ -128,21 +128,6 @@ int main(void){
 
 	memset(&sendbuf,0,sizeof(sendbuf));
 	memset(&recvbuf,0,sizeof(recvbuf));
-/*
-	int n;
-	int ret=recvn(sock,&recvbuf.length,4,0);
-	n=ntohl(recvbuf.length);
-	ret=recvn(sock,recvbuf.body,n,0);
-	parse_server(recvbuf.body);
-	if(cmd=="请输入用户名")
-	{
-		getline(cin,username);
-		strcpy(sendbuf.body,username.c_str());
-		n=strlen(sendbuf.body);
-		sendbuf.length=htonl(n);
-		sendn(sock,&sendbuf,n+4,0);
-	}
-*/
 	pthread_t tid;
 	if(pthread_create(&tid,NULL,send_to_service,NULL)<0)
 		cerr<<"create thread failed"<<endl;
