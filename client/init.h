@@ -9,11 +9,19 @@
 #include <unistd.h>
 using namespace std;
 
-//收发包的结构体
+// 收发包的结构体
 typedef struct PACKAGE{
 	int length;
 	char body[1024];
 }package;
+/* 规则
+ * length表示body的长度
+ * body的第一位为标志位
+ * 若为‘0’，表示数据只需要发送一次
+ * 若为‘1’，表示数据需要多次发送，且当前为多次发送的第一个
+ * 若为‘2’，表示当前为多次发送的中间的包
+ * 若为‘3’，表示当前为多次发送的最后一个包
+ */
 
 //套接字
 int sock;
@@ -27,6 +35,8 @@ string username="";
 package sendbuf;
 //接受缓存
 package recvbuf;
+//保存发送的本地字节序的头部长度
+int send_num=0;
 
 //保存用户输入内容
 string cmdline="";
@@ -43,6 +53,8 @@ pthread_once_t once_control=PTHREAD_ONCE_INIT;
 pthread_mutex_t sendbuf_mutex;
 //send线程要在sendbuf非空时才执行
 pthread_cond_t not_empty;
+//send_num的读写锁
+pthread_rwlock_t send_num_rwlock;
 
 //处理Ctrl+C
 void handle(int sig){
@@ -57,12 +69,29 @@ void init_routine(){
 		cerr<<"init mutex failed"<<endl;
 	
 	if(pthread_cond_init(&not_empty,NULL)<0)
-		cerr<<"init conf failed"<<endl;
+		cerr<<"init not empty cond failed"<<endl;
+
+	if(pthread_rwlock_init(&send_num_rwlock,NULL)<0)
+		cerr<<"init rwlock failed"<<endl;
 
 }
 
 
 //发送函数
+/* 不封装send函数
+ssize_t sendn(int sockfd,const void *buf,size_t len,int flags)
+{
+	len=len>1024?1028:len;
+	if(send(sockfd,buf,1028,flags)<0)
+	{
+		cerr<<"something wrong when send"<<endl;
+		return -1;
+	}
+
+	return len;
+}
+*/
+/*
 ssize_t sendn(int sockfd,const void *buf,size_t len,int flags)
 {
 	size_t nleft=len;
@@ -85,8 +114,21 @@ ssize_t sendn(int sockfd,const void *buf,size_t len,int flags)
 	}
 	return len;
 }
-
+*/
 //接收函数
+//返回接收到的body长度
+ssize_t recvn(int sockfd,void *sbuf,size_t *len,int flags)
+{
+	package *buf=(package *)sbuf;
+	*len=recv(sockfd,&(buf->length),4,flags);
+	if(*len>0)
+	{
+		*len=ntohl(buf->length);
+		*len=recv(sockfd,buf->body,*len,flags);
+	}
+	return *len;
+}
+/*
 ssize_t recvn(int sockfd,void*buf,size_t len,int flags)
 {
 	size_t nleft=len;
@@ -109,4 +151,5 @@ ssize_t recvn(int sockfd,void*buf,size_t len,int flags)
 	}
 	return len;
 }
+ */
 #endif

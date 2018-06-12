@@ -21,20 +21,19 @@ void *send_to_service(void *args)
 {
 	if(signal(SIGINT,handle)<0)
 		cerr<<"something wrong when installing sub signal"<<endl;
-	//保存发送时首部数据，即body长度
-	int n;
 	while(true){
 		pthread_mutex_lock(&sendbuf_mutex);
+		//等待sendbuf不为空
 		if(strlen(sendbuf.body)==0)
 		{
 			cout<<"wait for not_empty"<<endl;
 			if(pthread_cond_wait(&not_empty,&sendbuf_mutex)<0)
 				cerr<<"wait not_empty failed"<<endl;
 		}
-	
-		n=strlen(sendbuf.body);
-		sendbuf.length=htonl(n);
-		sendn(sock,&sendbuf,4+n,0);
+		//对send_num加读锁
+		pthread_rwlock_rdlock(&send_num_rwlock);
+		send(sock,&sendbuf,4+send_num,0);
+		pthread_rwlock_unlock(&send_num_rwlock);
 		memset(&sendbuf,0,sizeof(sendbuf));
 		pthread_mutex_unlock(&sendbuf_mutex);
 	}
@@ -49,12 +48,24 @@ void * read_from_local(void *args){
 		if(is_username)
 		{
 			is_username=false;
+			while(cmdline.length()>20)
+			{
+				cout<<"用户名不能超过二十个字节"<<endl;
+				getline(cin,cmdline);
+			}
+			username=cmdline;
+			//对sendbuf加锁
 			pthread_mutex_lock(&sendbuf_mutex);
 			strcpy(sendbuf.body,cmdline.c_str());
+			//对send_num 加写锁
+			pthread_rwlock_wrlock(&send_num_rwlock);
+			send_num=strlen(sendbuf.body);
+			sendbuf.length=htonl(send_num);
+			pthread_rwlock_unlock(&send_num_rwlock);
+			//唤醒发送线程
 			if(pthread_cond_signal(&not_empty)<0)
 				cerr<<"signal not_empty failed"<<endl;
 			pthread_mutex_unlock(&sendbuf_mutex);
-			username=cmdline;
 		}
 		else
 		{
@@ -85,28 +96,17 @@ void * read_from_local(void *args){
 void recv_from_service(){
 	if(signal(SIGINT,handle)<0)
 		cerr<<"something wrong when installing signal"<<endl;
-	//保存接收到的首部内容，即将要接收的body长度
-	int n;
+	size_t len;
 	while(true){
 		cout<<endl;
 		memset(&recvbuf,0,sizeof(recvbuf));
-		int ret=recvn(sock,&recvbuf.length,4,0);
-		if(ret==-1){
-			cerr<<"接收首部四个字节时出错"<<endl;
-			break;
-		}
-		else if(ret<4){
-			cerr<<"服务端关闭"<<endl;
-			break;
-		}
-		n=ntohl(recvbuf.length);
-
-		ret=recvn(sock,recvbuf.body,n,0);
-		if(ret==-1){
+		
+		len=recvn(sock,recvbuf.body,&len,0);
+		if(len==-1){
 			cout<<"接收失败"<<endl;
 			break;
 		}
-		if(ret==0)
+		if(len==0)
 		{
 			cout<<"服务端断开了连接"<<endl;
 			break;
