@@ -45,9 +45,10 @@ void * send_and_recv(void * arg){
 	do
 	{
 		sendbuf.body[0]='0';
-		strcpy(sendbuf.body+1,"请输入用户名");
+		strcpy(sendbuf.body+1,"server tips|请输入用户名");
 		n=strlen(sendbuf.body);
 		sendbuf.length=htonl(n);
+		cout<<"length "<<n<<",body   "<<sendbuf.body[1]<<endl;
 		send(sock,&sendbuf,n+4,0);
 		ret=recvn(sock,&recvbuf,&ret,0);
 		cout<<"用户输入用户名>>>"<<recvbuf.body<<endl;
