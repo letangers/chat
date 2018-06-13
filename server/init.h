@@ -15,6 +15,7 @@ typedef struct PACKAGE{
 map<string,int> online_user_table;
 
 
+/*
 ssize_t sendn(int sockfd,const void *buf,size_t len,int flags)
 {
 	size_t nleft=len;
@@ -37,7 +38,7 @@ ssize_t sendn(int sockfd,const void *buf,size_t len,int flags)
 	}
 	return len;
 }
-
+*/
 ssize_t recvn(int sockfd,void*buf,size_t len,int flags)
 {
 	size_t nleft=len;
@@ -59,5 +60,5 @@ ssize_t recvn(int sockfd,void*buf,size_t len,int flags)
 		nleft-=nrecv;
 	}
 	return len;
-}
+}*/
 #endif
