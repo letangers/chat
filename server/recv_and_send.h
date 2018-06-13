@@ -27,7 +27,7 @@ void * send_and_recv(void * arg){
 	package sendbuf;
 	memset(&sendbuf,0,sizeof(sendbuf));
 	memset(&recvbuf,0,sizeof(recvbuf));
-	int ret;
+	size_t ret;
 	//保存结构体首部
 	int n;
 	//保存对应套接字用户名
@@ -44,13 +44,12 @@ void * send_and_recv(void * arg){
 	//将用户名和sock建立联系
 	do
 	{
-		strcpy(sendbuf.body,"请输入用户名");
+		sendbuf.body[0]='0';
+		strcpy(sendbuf.body+1,"请输入用户名");
 		n=strlen(sendbuf.body);
 		sendbuf.length=htonl(n);
-		sendn(sock,&sendbuf,n+4,0);
-		ret=recvn(sock,&recvbuf.length,4,0);
-		n=htonl(recvbuf.length);
-		ret=recvn(sock,recvbuf.body,n,0);
+		send(sock,&sendbuf,n+4,0);
+		ret=recvn(sock,&recvbuf,&ret,0);
 		cout<<"用户输入用户名>>>"<<recvbuf.body<<endl;
 		if(ret==0)
 		{
@@ -73,9 +72,7 @@ void * send_and_recv(void * arg){
 		memset(&sendbuf,0,sizeof(sendbuf));
 		
 		//接收来源命令
-		ret=recvn(sock,&recvbuf.length,4,0);
-		n=htonl(recvbuf.length);
-		ret=recvn(sock,recvbuf.body,n,0);
+		ret=recvn(sock,&recvbuf,&ret,0);
 		if(ret==0)
 		{
 			cout<<"connection break  "<<sock<<endl;
@@ -97,37 +94,37 @@ void * send_and_recv(void * arg){
 				*data+='|';
 			}
 			*args=*username;
-			*data="online "+*data;
+			*data="server online|"+*data;
 		}
 		if(*cmd=="sendto"){
 			if(*args=="all"){
-				string temp;
+				*data=*username+" messagetoall|"+*data;
 				for(*iter=online_user_table.begin();*iter!=online_user_table.end();(*iter)++)
 				{
-					temp=*data;
-					temp=*username+" "+temp;
-					strcpy(sendbuf.body,temp.c_str());
+					sendbuf.body[0]='0';
+					strcpy(sendbuf.body+1,data->c_str());
 					n=strlen(sendbuf.body);
 					sendbuf.length=htonl(n);
-					sendn((*iter)->second,&sendbuf,n+4,0);
+					send((*iter)->second,&sendbuf,n+4,0);
 				}
 				continue;
 			}
 			else if(online_user_table.count(*args)==0){
-				*data="用户不存在";
+				*data="server tips|用户不存在";
 				*args=*username;
 			}
 			else{
-				*data=*username+" "+*data;	
+				*data=*username+" message|"+*data;	
 			}
 		}
 
 		//发送数据
 		cout<<"发出的数据是"<<*data<<endl;
-		strcpy(sendbuf.body,data->c_str());
+		sendbuf.body[0]='0';
+		strcpy(sendbuf.body+1,data->c_str());
 		n=strlen(sendbuf.body);
 		sendbuf.length=htonl(n);
-		sendn(online_user_table[*args],&sendbuf,n+4,0);
+		send(online_user_table[*args],&sendbuf,n+4,0);
 	}
 	online_user_table.erase(*username);
 	delete username;

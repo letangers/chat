@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <errno.h>
 #include <map>
+#include <arpa/inet.h>
 #include <string>
 using namespace std;
 
@@ -15,7 +16,7 @@ typedef struct PACKAGE{
 map<string,int> online_user_table;
 
 
-/*
+/*不再封装sendn函数
 ssize_t sendn(int sockfd,const void *buf,size_t len,int flags)
 {
 	size_t nleft=len;
@@ -39,6 +40,20 @@ ssize_t sendn(int sockfd,const void *buf,size_t len,int flags)
 	return len;
 }
 */
+//接收函数
+//返回接收到的body长度
+ssize_t recvn(int sockfd,void *sbuf,size_t *len,int flags)
+{
+	package *buf=(package *)sbuf;
+	*len=recv(sockfd,&(buf->length),4,flags);
+	if(*len>0)
+	{
+		*len=ntohl(buf->length);
+		*len=recv(sockfd,buf->body,*len,flags);
+	}
+	return *len;
+}
+/*
 ssize_t recvn(int sockfd,void*buf,size_t len,int flags)
 {
 	size_t nleft=len;
@@ -60,5 +75,6 @@ ssize_t recvn(int sockfd,void*buf,size_t len,int flags)
 		nleft-=nrecv;
 	}
 	return len;
-}*/
+}
+*/
 #endif
